@@ -32,9 +32,15 @@ void Solution::start()
     std::string f{"y22aa0886633"};
 #endif //CLI
 
+    //按照欢乐斗地主残局设定
+    //我方为地主 对方为农民 我方先出牌
     CardSet lord, farmer;
     lord.from_string(l);
     farmer.from_string(f);
+
+    std::cout<<"loard hand:  ["<<lord.str()<<"]\n";
+    std::cout<<"farmer hand: ["<<farmer.str()<<"]\n";
+    std::cout<<"------------------------------"<<"\n";
 
     using namespace std::chrono;
     steady_clock::time_point start = steady_clock::now();
@@ -42,20 +48,21 @@ void Solution::start()
     steady_clock::time_point end = steady_clock::now();
 
     duration<double> time_span = duration_cast<duration<double>>(end - start);
-    std::cout << GREEN << "nodes calculated: " << RESET << engine_->nodes_searched() << "\n";
-    std::cout << GREEN << "search time: " << RESET << time_span.count() << GREEN<< " seconds.\n";
-    std::cout << GREEN << "transposition table hit rate: " << RESET << engine_->hash_hit_rate() << "%\n\n";
+    std::cout << "nodes calculated: " << engine_->nodes_searched() << "\n";
+    std::cout << "search time: " << time_span.count() << " seconds.\n";
+    std::cout << "transposition table hit rate: " << engine_->hash_hit_rate() << "%\n\n";
 
     if (root->score == 1 && !root->child.empty()) {
-        std::cout << BOLDGREEN <<"出:["
-                  << root->child[0]->last_move->hand.str() << "]" << RESET <<"\n";
+        std::cout <<"出:["
+                  << root->child[0]->last_move->hand.str()
+                  << "]\n";
 
 #ifdef CLI
         process_result(root->child[0]);
 #endif //CLI
 
     } else {
-        std::cout << RED << "无法取胜" << RESET << "\n";
+        std::cout << "无法取胜\n";
     }
 }
 
@@ -74,7 +81,7 @@ void Solution::process_result(TreeNode *node)
                 if (!child->child.empty()) {
                     node = child->child[0];
                     std::cout<<"------------------------------"<<"\n";
-                    std::cout<< BOLDGREEN << "出: ["<< node->last_move->hand.str() <<"]" << RESET << "\n";
+                    std::cout<< "出: ["<< node->last_move->hand.str() <<"]\n";
                     std::cout<<"currt loard hand: ["<<node->lord.str()<<"]\n";
                     std::cout<<"currt farmer hand:["<<node->farmer.str()<<"]\n";
 
