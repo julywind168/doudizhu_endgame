@@ -11,26 +11,20 @@ namespace doudizhu_endgame {
 
 class Solution {
 public:
+    Solution() = default;
 
-    Solution() : engine_(new Negamax) {}
-    ~Solution() { delete engine_; }
+    ~Solution() = default;
 
-    void set_time_out();
     void start();
 
 private:
+    Negamax engine_;
 
-    Negamax* engine_;
-
-    void process_result(TreeNode* node);
-
-    void restart_search(TreeNode* node, Pattern* last);
-
-    void reset_engine();
+    void search_remaining_move(const CardSet &lord, const CardSet &farmer, const Pattern &move);
 
     std::string input_stdin(const char *prompt);
+
+    Pattern get_enemy_current_hand(CardSet &current, const Pattern &last);
 };
-
-}  //namespace doudizhu_endgame
-
+}   //namespace doudizhu_endgame
 #endif //DOUDIZHU_ENDGAME_SOLUTION_H

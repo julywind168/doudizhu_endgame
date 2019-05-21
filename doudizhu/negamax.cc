@@ -1,204 +1,142 @@
 //
 // Created by deng on 18-11-28.
 //
-
 #include "negamax.h"
 
 namespace doudizhu_endgame {
 
-Negamax::Negamax() = default;
-
-Negamax::~Negamax()
-{
-    destroy_tree(tree_);
-}
-
-void Negamax::gen_nodes(TreeNode *node)
-{
-    if (node->turn == 1) { //farmer turn
-        std::vector<Pattern *> selections;
-        doudizhu_.next_hand(node->farmer, node->last_move, selections);
-
-        node->child.reserve(selections.size());
-
-        for (Pattern *move : selections) {
-            CardSet after_play;
-            doudizhu_.play(node->farmer, move, after_play);
-
-            auto child = new TreeNode{0, 0, node->lord, after_play, move};
-            if (after_play.empty()) {
-                child->score = -1;
-
-                for (TreeNode *i : node->child) {
-                    delete i;
-                }
-                std::vector<TreeNode *>().swap(node->child);
-                node->child.emplace_back(child);
-                return;
-            }
-            node->child.emplace_back(child);
-        }
-
-    } else {//lord turn
-        std::vector<Pattern *> selections;
-        doudizhu_.next_hand(node->lord, node->last_move, selections);
-
-        node->child.reserve(selections.size());
-
-        for (Pattern *move : selections) {
-            CardSet after_play;
-            doudizhu_.play(node->lord, move, after_play);
-
-            auto child = new TreeNode{1, 0, after_play, node->farmer, move};
-            if (after_play.empty()) {
-                child->score = -1;
-
-                for (TreeNode *i : node->child) {
-                    delete i;
-                }
-                std::vector<TreeNode *>().swap(node->child);
-                node->child.emplace_back(child);
-                return;
-            }
-            node->child.emplace_back(child);
-        }
-    }
-}
-
-int8_t Negamax::negamax(TreeNode* node)
+int8_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int8_t turn)
 {
     nodes_searched_ += 1;
-    int8_t search = table_.get(node);
+    if (lord.empty() || farmer.empty()) {
+        return -1;
+    }
 
+    uint32_t key = transposition_table_.gen_key(lord, farmer, last_move.hand, turn);
+    int8_t search = transposition_table_.get(key);
     if (search != 0) {
         hash_hit_ += 1;
         return search;
     }
 
-    gen_nodes(node);
     int8_t score = -1;
-    for (TreeNode* &child: node->child) {
-        int8_t val{};
-        if (child->score != 0) {
-            val = -child->score;
-            nodes_searched_ += 1;
-
-        } else {
-            val = -negamax(child);
+    if (turn == FARMER_PLAY) {//farmer
+        std::vector<Pattern> selections;
+        DouDiZhuHand::next_hand(farmer, last_move, selections);
+        for (Pattern &move : selections) {
+            CardSet after_play;
+            DouDiZhuHand::play(farmer, move.hand, after_play);
+            int8_t val = -negamax_dev(lord, after_play, move, LORD_PLAY);
+            if (val > 0) {
+                score = val;
+                break;
+            }
         }
 
-        if (val > 0) {
-            score = val;
-            break;          //发生剪枝
+    } else {//lord
+        std::vector<Pattern> selections;
+        DouDiZhuHand::next_hand(lord, last_move, selections);
+        for (Pattern &move : selections) {
+            CardSet after_play;
+            DouDiZhuHand::play(lord, move.hand, after_play);
+            int8_t val = -negamax_dev(after_play, farmer, move, FARMER_PLAY);
+            if (val > 0) {
+                score = val;
+                best_move = move;
+                break;
+            }
         }
     }
 
-    node->score = score;
-    table_.add(node);
-    pruning_tree(node);
-
+    transposition_table_.add(key, score);
     return score;
 }
 
-TreeNode* Negamax::search(const CardSet& lord, const CardSet& farmer)
+bool Negamax::search(const CardSet &lord, const CardSet &farmer)
 {
-    CardSet pass;
-    Pattern start = {-1, Pass, pass};
-    auto root = new TreeNode{0, 0, lord, farmer, &start};
-
-    negamax(root);
-    tree_ = root;
-
-    return root;
+    Pattern start = {-1, Pass, CardSet()};
+    int8_t res = negamax_dev(lord, farmer, start, LORD_PLAY);
+    return res == 1;
 }
 
-TreeNode *Negamax::search(const CardSet &lord, const CardSet &farmer, Pattern* last)
+bool Negamax::search(const CardSet &lord, const CardSet &farmer, const Pattern &last)
 {
-    auto root = new TreeNode{0, 0, lord, farmer, last};
-
-    negamax(root);
-    tree_ = root;
-
-    return root;
+    int8_t res = negamax_dev(lord, farmer, last, LORD_PLAY);
+    return res == 1;
 }
 
-void Negamax::pruning_tree(TreeNode *node)
+size_t Negamax::nodes_searched()
 {
-    if (node->turn == 0) {
-        while (!node->child.empty() && node->child.back()->score != -1) {
-            destroy_tree(node->child.back());
-            node->child.pop_back();
-        }
+    return nodes_searched_;
+}
 
-        if (!node->child.empty()) {
-            std::swap(node->child.front(), node->child.back());
-            while (node->child.size() > 1) {
-                destroy_tree(node->child.back());
-                node->child.pop_back();
-            }
+double Negamax::hash_hit_rate()
+{
+    return ((double) hash_hit_ / nodes_searched_) * 100;
+}
 
-        } else {
-            //no child's score is -1
-        }
+void Negamax::reset_counter()
+{
+    nodes_searched_ = 0;
+    hash_hit_ = 0;
+    best_move = Pattern();
+}
+
+void Negamax::reset_transposition_table()
+{
+    transposition_table_.reset();
+}
+
+TranspositionTable::TranspositionTable()
+{
+    table_ = new HashItem[TRANSPOSITION_TABLE_SIZE];
+}
+
+TranspositionTable::~TranspositionTable()
+{
+    delete[] table_;
+}
+
+void TranspositionTable::reset()
+{
+    memset(table_, 0, sizeof(struct HashItem) * TRANSPOSITION_TABLE_SIZE);
+}
+
+void TranspositionTable::add(uint32_t key, int8_t score)
+{
+    size_t index = key & TRANSPOSITION_TABLE_SIZE_MASK;
+    table_[index].key = key;
+    table_[index].score = score;
+}
+
+int8_t TranspositionTable::get(uint32_t key)
+{
+    size_t index = key & TRANSPOSITION_TABLE_SIZE_MASK;
+    if (table_[index].key == key) {
+        return table_[index].score;
 
     } else {
-        //not pruning
-    }
-}
-
-void Negamax::destroy_tree(TreeNode *node)
-{
-    if (!node->child.empty()) {
-        for (TreeNode* i : node->child) {
-            destroy_tree(i);
-        }
-        std::vector<TreeNode *>().swap(node->child);
-    }
-
-    delete node;
-}
-
-void TranspositionTable::add(TreeNode *node)
-{
-    uint64_t key = gen_key(node);
-    auto it = table_.find(key);
-
-    if (it == table_.end()) {
-        this->table_.emplace(key, node->score);
-
-    } else {
-        //not add
-    }
-}
-
-size_t TranspositionTable::size()
-{
-    return table_.size();
-}
-
-int8_t TranspositionTable::get(TreeNode *node)
-{
-    uint64_t key = gen_key(node);
-    auto it = table_.find(key);
-
-    if (it == table_.end()) {
         return 0;
-
-    } else {
-        return it->second;
     }
 }
 
-uint64_t TranspositionTable::gen_key(TreeNode *node)
+uint32_t TranspositionTable::gen_key(const CardSet &lord, const CardSet &farmer, const CardSet &last_move, int8_t turn)
 {
-    uint64_t val = 0;
+    uint64_t key = 0;
 
-    val ^= node->farmer.to_ullong() + 0x9e3779b9 + (val<<6) + (val>>2);
-    val ^= node->lord.to_ullong() + 0x9e3779b9 + (val<<6) + (val>>2);
-    val ^= node->last_move->hand.to_ullong() + 0x9e3779b9 + (val<<6) + (val>>2);
-    val ^= node->turn + 0x9e3779b9 + (val<<6) + (val>>2);
+    key ^= farmer.to_ullong() + 0x9e3779b9 + (key << 6) + (key >> 2);
+    key ^= lord.to_ullong() + 0x9e3779b9 + (key << 6) + (key >> 2);
+    key ^= last_move.to_ullong() + 0x9e3779b9 + (key << 6) + (key >> 2);
+    key ^= turn + 0x9e3779b9 + (key << 6) + (key >> 2);
 
-    return val;
+    //64 bit to 32 bit hash
+    key = (~key) + (key << 18);
+    key = key ^ (key >> 31);
+    key = (key + (key << 2)) + (key << 4);
+    key = key ^ (key >> 11);
+    key = key + (key << 6);
+    key = key ^ (key >> 22);
+
+    return (int) key;
 }
-
 }//namespace doudizhu_endgame

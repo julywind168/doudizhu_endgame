@@ -7,8 +7,14 @@
 
 #include <vector>
 #include <bitset>
+#include "utils.h"
 
 namespace doudizhu_endgame {
+
+HAS_MEMBER(_Find_first);
+HAS_MEMBER(_Find_next);
+
+#define BITSET_SIZE 64
 
 class CardSet {
 public:
@@ -21,7 +27,11 @@ public:
         return this->card_mask_ == other.card_mask_;
     }
 
-    //
+    std::bitset<BITSET_SIZE> raw() const
+    {
+        return card_mask_;
+    }
+
     size_t size() const
     {
         return card_mask_.count();
@@ -39,7 +49,7 @@ public:
 
     bool test(size_t pos) const
     {
-        return card_mask_[pos];
+        return card_mask_.test(pos);
     }
 
     uint64_t to_ullong() const
@@ -49,32 +59,42 @@ public:
 
     size_t find_first() const
     {
-        return card_mask_._Find_first();
+        if (has_member__Find_first<std::bitset<64>>::value) {
+            return card_mask_._Find_first();
+
+        } else {
+            return my_find_first(card_mask_.to_ullong(), BITSET_SIZE);
+        }
     }
 
     size_t find_next(size_t prev) const
     {
-        return card_mask_._Find_next(prev);
+        if (has_member__Find_next<std::bitset<64>, size_t >::value) {
+            return card_mask_._Find_next(prev);
+
+        } else {
+            return my_find_next(prev, card_mask_.to_ullong(), BITSET_SIZE);
+        }
     }
 
     bool is_single(int8_t card) const
     {
-        return card_mask_[card << 2];
+        return card_mask_.test((size_t) card << 2);
     }
 
     bool is_pair(int8_t card) const
     {
-        return card_mask_[(card << 2) + 1];
+        return card_mask_.test((size_t) (card << 2) + 1);
     }
 
     bool is_trio(int8_t card) const
     {
-        return card_mask_[(card << 2) + 2];
+        return card_mask_.test((size_t) (card << 2) + 2);
     }
 
     bool is_bomb(int8_t card) const
     {
-        return card_mask_[(card << 2) + 3];
+        return card_mask_.test((size_t) (card << 2) + 3);
     }
 
     void set(size_t pos)
@@ -86,11 +106,6 @@ public:
     {
         card_mask_.set(pos, val);
     }
-
-    //全部移除些张牌, 要移除的牌全部部置为1,比如移除‘3’,‘5’（index为0, 2）：
-    //before：0011 0010 0111
-    //taken： 1111 0000 1111
-    //after： 0000 0010 0000
 
     void remove_taken(CardSet &taken)
     {
@@ -134,10 +149,6 @@ public:
 
     void set_plane_pair(int8_t start, int8_t end, std::vector<int8_t> &comb);
 
-    //部分移除
-    //card_mask_: 0000 0111 1111
-    //hand:  0000 0001 0111
-    //after: 0000 0011 0001
     void remove(const CardSet &hand);
 
     bool has_count(int8_t card, int8_t count) const;
@@ -146,15 +157,12 @@ public:
 
     std::string bitset_str();
 
-    void from_string(std::string string);
+    bool from_string(std::string string);
 
     void from_c_string(char *string);
 
 private:
-
-    std::bitset<64> card_mask_;
+    std::bitset<BITSET_SIZE> card_mask_{};
 };
-
 }   //namespace doudizhu_endgame
-
 #endif //DOUDIZHU_ENDGAME_CARDSET_H

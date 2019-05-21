@@ -10,149 +10,94 @@
 
 namespace doudizhu_endgame {
 
-#define CLI
-//
-//输入不带空格，'10'用'0'（零）代替
-//示例：[大王 A Q Q J J 10 9 9 9 4 4]
-//输入：zaqqjj0999844
-//
 void Solution::start()
 {
-    std::cout<<"输入不带空格,'10'用'0'（零）代替"<<"\n";
-    std::cout<<"如：[大王 小王 2 A 10 9 9 9 4]"<<"\n";
-    std::cout<<"输入：zy2a09994"<<"\n";
-    std::cout<<"------------------------------"<<"\n";
+    std::cout << "----------------------------------------" << "\n";
+    std::cout << "输入不带空格, 10(0零)大王(z)小王(y)代替" << "\n";
+    std::cout << "如：[大王 小王 2 A 10 9 9 9 4]" << "\n";
+    std::cout << "输入：zy2a09994" << "\n";
+    std::cout << "----------------------------------------" << "\n";
 
-#ifdef CLI
-    std::string l = input_stdin("输入手牌:");
-    std::string f = input_stdin("输入对手手牌:");
-    std::cout<<"------------------------------"<<"\n";
-#else
-    std::string l{"zaqqjj0999844"};
-    std::string f{"y22aa0886633"};
-#endif //CLI
-
-    //按照欢乐斗地主残局设定
-    //我方为地主 对方为农民 我方先出牌
     CardSet lord, farmer;
-    lord.from_string(l);
-    farmer.from_string(f);
+    while (!lord.from_string(input_stdin("输入我方手牌:"))) {}
+    while (!farmer.from_string(input_stdin("输入对手手牌:"))) {}
 
-    std::cout<<"loard hand:  ["<<lord.str()<<"]\n";
-    std::cout<<"farmer hand: ["<<farmer.str()<<"]\n";
-    std::cout<<"------------------------------"<<"\n";
+    std::cout << "----------------------------------------" << "\n";
+    std::cout << "我方手牌: [" << lord.str() << "]\n";
+    std::cout << "对手手牌: [" << farmer.str() << "]\n";
+    std::cout << "----------------------------------------" << "\n";
 
     using namespace std::chrono;
     steady_clock::time_point start = steady_clock::now();
-    TreeNode* root = engine_->search(lord, farmer);
+    bool win = engine_.search(lord, farmer);
     steady_clock::time_point end = steady_clock::now();
 
     duration<double> time_span = duration_cast<duration<double>>(end - start);
-    std::cout << "nodes calculated: " << engine_->nodes_searched() << "\n";
+    std::cout << "nodes calculated: " << engine_.nodes_searched() << "\n";
     std::cout << "search time: " << time_span.count() << " seconds.\n";
-    std::cout << "transposition table hit rate: " << engine_->hash_hit_rate() << "%\n\n";
+    std::cout << "transposition table hit rate: " << engine_.hash_hit_rate() << "%\n";
+    std::cout << "----------------------------------------" << "\n";
 
-    if (root->score == 1 && !root->child.empty()) {
-        std::cout <<"出:["
-                  << root->child[0]->last_move->hand.str()
-                  << "]\n";
-
-#ifdef CLI
-        process_result(root->child[0]);
-#endif //CLI
+    if (win) {
+        std::cout << "出:[" << engine_.best_move.hand.str() << "]\n";
+        search_remaining_move(lord, farmer, engine_.best_move);
 
     } else {
         std::cout << "无法取胜\n";
     }
 }
 
-void Solution::process_result(TreeNode *node)
-{
-    Pattern* last = nullptr;
-
-    bool search = true;
-    while (!node->child.empty() && search) {
-        CardSet hand;
-        hand.from_string(input_stdin("输入对方出牌:"));
-
-        for (auto child : node->child) {
-            if (child->last_move->hand == hand) {
-                last = child->last_move;
-                if (!child->child.empty()) {
-                    node = child->child[0];
-                    std::cout<<"------------------------------"<<"\n";
-                    std::cout<< "出: ["<< node->last_move->hand.str() <<"]\n";
-                    std::cout<<"currt loard hand: ["<<node->lord.str()<<"]\n";
-                    std::cout<<"currt farmer hand:["<<node->farmer.str()<<"]\n";
-
-                } else {
-                    search = false;
-                }
-
-            } else {
-                //find next match
-            }
-        }
-    }
-
-    if (!node->lord.empty() && last != nullptr) {
-        restart_search(node, last);
-
-    } else {
-        //finsh process
-    }
-}
-
-void Solution::restart_search(TreeNode *node, Pattern *last)
-{
-    CardSet lord = node->lord;
-    CardSet farmer = node->farmer;
-    farmer.remove(last->hand);
-    Pattern last_{last->power, last->type, last->hand};
-    std::cout << "restart search..."<<"\n";
-
-    reset_engine();
-    TreeNode* re = engine_->search(lord, farmer, &last_);
-
-    if (!re->child.empty()) {
-        std::cout<< "出: ["<< re->child[0]->last_move->hand.str() << "]\n";
-        process_result(re->child[0]);
-
-    } else {
-        std::cout<<"无法取胜"<<"\n";
-    }
-}
-
 std::string Solution::input_stdin(const char *prompt)
 {
-    printf("%s\n", prompt);
-
-    char *buff = new char[50];
-
-    buff = fgets(buff, 50, stdin);
-    size_t len = strlen(buff);
-    if (len > 1) {
-        buff[len - 1] = '\0';
-
-    } else {
-        //input is a 'Pass'
-    }
-
+    std::cout << prompt << "\n";
+    char buff[50];
+    std::cin.getline(buff, 50);
     std::string string(buff);
-    delete[] buff;
-
+    if (string.length() == 0) {
+        return std::string("\n");
+    }
     return string;
 }
 
-void Solution::reset_engine()
+void Solution::search_remaining_move(const CardSet &lord, const CardSet &farmer, const Pattern &move)
 {
-    delete engine_;
-    engine_ = new Negamax;
+    CardSet lord_current = lord;
+    CardSet farmer_current = farmer;
+    lord_current.remove(move.hand);
+    while (!lord_current.empty()) {
+        Pattern farmer_move = get_enemy_current_hand(farmer_current, move);
+        engine_.reset_counter();
+        engine_.reset_transposition_table();
+        engine_.search(lord_current, farmer_current, farmer_move);
+        lord_current.remove(engine_.best_move.hand);
+
+        std::cout << "----------------------------------------" << "\n";
+        if (engine_.best_move.hand.empty()) {
+            std::cout << "出: Pass\n";
+
+        } else {
+            std::cout << "出: [" << engine_.best_move.hand.str() << "]\n";
+        }
+        std::cout << "currt loard hand: [" << lord_current.str() << "]\n";
+        std::cout << "currt farmer hand:[" << farmer_current.str() << "]\n";
+    }
+
 }
 
-void Solution::set_time_out()
+Pattern Solution::get_enemy_current_hand(CardSet &hand, const Pattern &last)
 {
-    //
+    while (true) {
+        CardSet move;
+        while (!move.from_string(input_stdin("输入对方出牌:"))) {}
+        std::vector<Pattern> selections;
+        DouDiZhuHand::next_hand(hand, last, selections);
+        for (Pattern &i : selections) {
+            if (i.hand == move) {
+                hand.remove(move);
+                return i;
+            }
+        }
+        std::cout << "invalid hand: [" << move.str() << "]\n";
+    }
 }
-
 } //namespace doudizhu_endgame

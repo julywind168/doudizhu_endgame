@@ -2,39 +2,9 @@
 // Created by deng on 18-11-28.
 //
 
-#include <map>
-
 #include "cardset.h"
 
 namespace doudizhu_endgame {
-
-//card to val map
-static const std::map<char, int8_t> val_map = {
-        {'3',  0},
-        {'4',  1},
-        {'5',  2},
-        {'6',  3},
-        {'7',  4},
-        {'8',  5},
-        {'9',  6},
-        {'0',  7},
-        {'J',  8},
-        {'Q',  9},
-        {'K',  10},
-        {'A',  11},
-        {'2',  12},
-        {'Y',  13},
-        {'Z',  14},
-        {'\n', 15},
-        {'P',  15}
-};
-
-//val to string
-static const std::string str_map[16]{"3 ", "4 ", "5 ", "6 ", "7 ",
-                                 "8 ", "9 ", "10 ", "J ", "Q ",
-                                 "K ", "A ", "2 ", "小王 ", "大王 ",
-                                 "Pass "};
-
 
 void CardSet::set_rocket()
 {
@@ -163,21 +133,21 @@ bool CardSet::has_count(int8_t card, int8_t count) const
 std::string CardSet::str()
 {
     std::string string;
-    size_t pos = card_mask_._Find_first();
+    size_t pos = find_first();
     while (pos < 64) {
         size_t index = (pos >> 2);
         if (index < 16) {
             //牌面大在前
-            string.insert(0, str_map[index]);
+            string.insert(0, val2card[index]);
 
         } else {
             //invalid card
         }
-        pos = card_mask_._Find_next(pos);
+        pos = find_next(pos);
     }
 
     if (string.length() == 0) {
-        string += str_map[15];
+        string += val2card[15];
     }
 
     string.pop_back();
@@ -189,29 +159,28 @@ std::string CardSet::bitset_str()
     return card_mask_.to_string();
 }
 
-void CardSet::from_string(std::string string)
+bool CardSet::from_string(std::string string)
 {
     int8_t card;
-    int8_t i = 0;
-    while (string[i]) {
-        auto it = val_map.find((char) toupper(string[i]));
-        if (it == val_map.end()) {
-            printf("invalid card:%c\n", string[i]);
-
+    for (auto ch : string) {
+        auto it = card2val.find(toupper(ch));
+        if (it == card2val.end()) {
+            printf("invalid card:%c\n", ch);
+            return false;
         } else {
-            if (string[i] != '\n' && string[i] != 'P') {
-
+            if (it->second < 15) {//valid card
                 card = (it->second) << 2;
                 while (card_mask_[card]) {
                     card += 1;
                 }
                 card_mask_.set((size_t) card);
+
             } else {
-                //Pass(empty) not set
+                //input is Pass
             }
         }
-        ++i;
     }
+    return true;
 }
 
 void CardSet::from_c_string(char *string)
@@ -222,17 +191,13 @@ void CardSet::from_c_string(char *string)
 void CardSet::remove(const CardSet &hand)
 {
     size_t pos = hand.find_first();
-
-
-    while (pos < 64) {
+    while (pos < BITSET_SIZE) {
         size_t i = ((pos >> 2) << 2) + 3;
         while (!card_mask_.test(i)) {
             i -= 1;
         }
         card_mask_.set(i, false);
-
         pos = hand.find_next(pos);
     }
 }
-
 }  //namespace doudizhu_endgame
