@@ -9,18 +9,27 @@
 
 namespace doudizhu_endgame {
 
-#define HAS_MEMBER(XXX) \
-template<typename T, typename... Args>\
-struct has_member_##XXX \
-{ \
-private:  \
-  template<typename U> \
-  static auto Check(int) -> decltype(std::declval<U>().XXX(std::declval<Args>()...), std::true_type());  \
-  template<typename U> \
-  static std::false_type Check(...); \
-public: \
-  static constexpr auto value = decltype(Check<T>(0))::value; \
+#define HAS_MEMBER(XXX)                                                                                 \
+template<typename T, typename... Args>                                                                  \
+struct has_member_##XXX                                                                                 \
+{                                                                                                       \
+private:                                                                                                \
+  template<typename U>                                                                                  \
+  static auto Check(int) -> decltype(std::declval<U>().XXX(std::declval<Args>()...), std::true_type()); \
+  template<typename U>                                                                                  \
+  static std::false_type Check(...);                                                                    \
+public:                                                                                                 \
+  static constexpr auto value = decltype(Check<T>(0))::value;                                           \
 }
+
+template<bool C, typename T = void>
+struct enable_if {
+    typedef T type;
+};
+
+template<typename T>
+struct enable_if<false, T> {
+};
 
 static const std::map<int, int8_t> card2val =
 {
@@ -57,7 +66,7 @@ static const uint64_t MultiplyDeBruijnBitPosition[64] =
         46, 26, 40, 15, 34, 20, 31, 10, 25, 14, 19, 9, 13, 8, 7, 6
 };
 
-static size_t my_find_first(size_t v, size_t not_found)
+static size_t my_find_first(uint64_t v, size_t not_found)
 {
     if (v != 0) {
         return MultiplyDeBruijnBitPosition[((uint64_t) ((v & -v) * 0x3f79d71b4cb0a89UL)) >> 58];

@@ -1,7 +1,6 @@
 //
 // Created by deng on 18-11-28.
 //
-
 #ifndef DOUDIZHU_ENDGAME_CARDSET_H
 #define DOUDIZHU_ENDGAME_CARDSET_H
 
@@ -11,10 +10,10 @@
 
 namespace doudizhu_endgame {
 
+#define BITSET_SIZE 64
+
 HAS_MEMBER(_Find_first);
 HAS_MEMBER(_Find_next);
-
-#define BITSET_SIZE 64
 
 class CardSet {
 public:
@@ -59,22 +58,12 @@ public:
 
     size_t find_first() const
     {
-        if (has_member__Find_first<std::bitset<64>>::value) {
-            return card_mask_._Find_first();
-
-        } else {
-            return my_find_first(card_mask_.to_ullong(), BITSET_SIZE);
-        }
+        return find_first_helper<std::bitset<BITSET_SIZE> >();
     }
 
     size_t find_next(size_t prev) const
     {
-        if (has_member__Find_next<std::bitset<64>, size_t >::value) {
-            return card_mask_._Find_next(prev);
-
-        } else {
-            return my_find_next(prev, card_mask_.to_ullong(), BITSET_SIZE);
-        }
+        return find_next_helper<std::bitset<BITSET_SIZE>>(prev);
     }
 
     bool is_single(int8_t card) const
@@ -163,6 +152,30 @@ public:
 
 private:
     std::bitset<BITSET_SIZE> card_mask_{};
+
+    template<typename T>
+    typename enable_if<has_member__Find_first<T>::value, size_t>::type find_first_helper() const
+    {
+        return card_mask_._Find_first();
+    }
+
+    template<typename T>
+    typename enable_if<!has_member__Find_first<T>::value, size_t>::type find_first_helper() const
+    {
+        return my_find_first(card_mask_.to_ullong(), BITSET_SIZE);
+    }
+
+    template<typename T>
+    typename enable_if<has_member__Find_next<T, size_t>::value, size_t>::type find_next_helper(size_t prev) const
+    {
+        return card_mask_._Find_next(prev);
+    }
+
+    template<typename T>
+    typename enable_if<!has_member__Find_next<T, size_t>::value, size_t>::type find_next_helper(size_t prev) const
+    {
+        return my_find_next(prev, card_mask_.to_ullong(), BITSET_SIZE);
+    }
 };
 }   //namespace doudizhu_endgame
 #endif //DOUDIZHU_ENDGAME_CARDSET_H
