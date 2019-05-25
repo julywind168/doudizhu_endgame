@@ -23,24 +23,105 @@ void DouDiZhuHand::play(const CardSet &hand, const CardSet &toplay, CardSet &res
 
 void DouDiZhuHand::next_hand(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    //搜索的顺序对剪枝的发生影响很大,
-    // 这里把 pass 作为最后考虑的选项
     next_moves.reserve(50);
-    get_rocket(hand, next_moves);
-    get_pair(hand, last, next_moves);
-    get_single(hand, last, next_moves);
-    get_triple_single(hand, last, next_moves);
-    get_triple_pair(hand, last, next_moves);
-    get_straight_single(hand, last, next_moves);
-    get_straight_pair(hand, last, next_moves);
-    get_triple(hand, last, next_moves);
-    get_bomb(hand, last, next_moves);
-    get_bomb_single(hand, last, next_moves);
-    get_bomb_pair(hand, last, next_moves);
-    get_plane(hand, last, next_moves);
-    get_plane_single(hand, last, next_moves);
-    get_plane_pair(hand, last, next_moves);
-    get_pass(hand, last, next_moves);
+    if (last.type != Pass) {
+        switch (last.type) {
+            case Pair:
+            {
+                get_pair(hand, last, next_moves);
+                break;
+            }
+            case Single:
+            {
+                get_single(hand, last, next_moves);
+                break;
+            }
+            case Triple_single:
+            {
+                get_triple_single(hand, last, next_moves);
+                break;
+            }
+            case Triple_pair:
+            {
+                get_triple_pair(hand, last, next_moves);
+                break;
+            }
+            case Triple:
+            {
+                get_triple(hand, last, next_moves);
+                break;
+            }
+            case Straight_single:
+            {
+                get_straight_single(hand, last, next_moves);
+                break;
+            }
+            case Straight_pair:
+            {
+                get_straight_pair(hand, last, next_moves);
+                break;
+            }
+            case Bomb_single:
+            {
+                get_bomb_single(hand, last, next_moves);
+                break;
+            }
+            case Bomb_pair:
+            {
+                get_bomb_pair(hand, last, next_moves);
+                break;
+            }
+            case Plane:
+            {
+                get_plane(hand, last, next_moves);
+                break;
+            }
+            case Plane_single:
+            {
+                get_plane_single(hand, last, next_moves);
+                break;
+            }
+            case Plane_pair:
+            {
+                get_plane_pair(hand, last, next_moves);
+                break;
+            }
+            default: {}
+        }
+        get_rocket(hand, next_moves);
+        get_bomb(hand, last, next_moves);
+        get_pass(hand, last, next_moves);
+
+    } else {
+        get_rocket(hand, next_moves);
+        get_pair(hand, last, next_moves);
+        get_single(hand, last, next_moves);
+
+        //check card '7' and '10'
+        if (hand.is_single(4) || hand.is_single(7)) {
+            get_straight_single(hand, last, next_moves);
+        }
+        get_straight_pair(hand, last, next_moves);
+
+        bool get_move_continue = false;
+        for (int8_t card = 0; card < 13; ++card) {
+            if (hand.is_trio(card)) {
+                get_move_continue = true;
+                break;
+            }
+        }
+        if (get_move_continue) {
+            get_triple_single(hand, last, next_moves);
+            get_triple_pair(hand, last, next_moves);
+            get_triple(hand, last, next_moves);
+            get_bomb(hand, last, next_moves);
+            get_bomb_single(hand, last, next_moves);
+            get_bomb_pair(hand, last, next_moves);
+            get_plane(hand, last, next_moves);
+            get_plane_single(hand, last, next_moves);
+            get_plane_pair(hand, last, next_moves);
+        }
+    }
 }
 
 void DouDiZhuHand::get_pass(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
@@ -56,114 +137,78 @@ void DouDiZhuHand::get_pass(const CardSet &hand, const Pattern &last, std::vecto
 
 void DouDiZhuHand::get_single(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    if (last.type == Pass || last.type == Single) {
-        for (int8_t i = 0; i < 15; ++i) {
-            if (hand.is_single(i) && i > last.power) {
-                CardSet res;
-                res.set_single(i);
-                next_moves.emplace_back(i, Single, res);
-            }
+    for (int8_t i = 0; i < 15; ++i) {
+        if (hand.is_single(i) && i > last.power) {
+            CardSet res;
+            res.set_single(i);
+            next_moves.emplace_back(i, Single, res);
         }
-
-    } else {
-        //can not move
     }
 }
 
 void DouDiZhuHand::get_pair(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    if (last.type == Pass || last.type == Pair) {
-        for (int8_t i = 0; i < 15; ++i) {
-            if (hand.is_pair(i) && i > last.power) {
-
-                CardSet res;
-                res.set_pair(i);
-                next_moves.emplace_back(i, Pair, res);
-            }
+    for (int8_t i = 0; i < 15; ++i) {
+        if (hand.is_pair(i) && i > last.power) {
+            CardSet res;
+            res.set_pair(i);
+            next_moves.emplace_back(i, Pair, res);
         }
-
-    } else {
-        //can not move
     }
 }
 
 void DouDiZhuHand::get_triple(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    if (last.type == Pass || last.type == Triple) {
-        for (int8_t i = 0; i < 15; ++i) {
-            if (hand.is_trio(i) && i > last.power) {
-                CardSet res;
-                res.set_trio(i);
-                next_moves.emplace_back(i, Triple, res);
-            }
+    for (int8_t i = 0; i < 15; ++i) {
+        if (hand.is_trio(i) && i > last.power) {
+            CardSet res;
+            res.set_trio(i);
+            next_moves.emplace_back(i, Triple, res);
         }
-
-    } else {
-        //can not move
     }
 }
 
 void DouDiZhuHand::get_triple_single(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    if (last.type == Pass || last.type == Triple_single) {
-        for (int8_t i = 0; i < 15; ++i) {
-            if (hand.is_trio(i) && i > last.power) {
-
-                for (int8_t j = 0; j < 15; ++j) {
-                    if (hand.is_single(j) && j != i) {
-                        CardSet res;
-                        res.set_trio_single(i, j);
-                        next_moves.emplace_back(i, Triple_single, res);
-                    }
+    for (int8_t i = 0; i < 15; ++i) {
+        if (hand.is_trio(i) && i > last.power) {
+            for (int8_t j = 0; j < 15; ++j) {
+                if (hand.is_single(j) && j != i) {
+                    CardSet res;
+                    res.set_trio_single(i, j);
+                    next_moves.emplace_back(i, Triple_single, res);
                 }
-
             }
         }
-
-    } else {
-        //can not move;
     }
 }
 
 void DouDiZhuHand::get_triple_pair(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    if (last.type == Pass || last.type == Triple_pair) {
-
-        for (int8_t i = 0; i < 15; ++i) {
-            if (hand.is_trio(i) && i > last.power) {
-
-                for (int8_t j = 0; j < 15; ++j) {
-                    if (hand.is_pair(j) && j != i) {
-                        CardSet res;
-                        res.set_trio_pair(i, j);
-                        next_moves.emplace_back(i, Triple_pair, res);
-                    }
+    for (int8_t i = 0; i < 15; ++i) {
+        if (hand.is_trio(i) && i > last.power) {
+            for (int8_t j = 0; j < 15; ++j) {
+                if (hand.is_pair(j) && j != i) {
+                    CardSet res;
+                    res.set_trio_pair(i, j);
+                    next_moves.emplace_back(i, Triple_pair, res);
                 }
-
             }
         }
-
-    } else {
-        //can not move;
     }
 }
 
 void DouDiZhuHand::get_bomb(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
     //powerx4 !!!!
-    if (last.type != Rocket) {
+    if (last.type != Rocket && hand.size() >= 4) {
         for (int8_t i = 0; i < 13; ++i) {
             if (hand.is_bomb(i) && (i << 2) > last.power) {
-
                 CardSet res;
                 res.set_bomb(i);
-
                 next_moves.emplace_back((i << 2), Bomb, res);
             }
         }
-
-    } else {
-        ////not move
     }
 }
 
@@ -201,70 +246,59 @@ void DouDiZhuHand::combination(CardSet hand, CardSet used, size_t comb_len, int8
 
 void DouDiZhuHand::get_bomb_single(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    if (last.type == Pass || last.type == Bomb_single) {
-        for (int8_t i = 0; i < 13; ++i) {
-            if (hand.is_bomb(i) && i > last.power) {
-                CardSet res;
-                res.set_bomb(i);
+    for (int8_t i = 0; i < 13; ++i) {
+        if (hand.is_bomb(i) && i > last.power) {
+            CardSet res;
+            res.set_bomb(i);
+            std::vector<std::vector<int8_t> > comb;
+            combination(hand, res, 2, 1, comb); //res->uesd
 
-                std::vector<std::vector<int8_t> > comb;
-                combination(hand, res, 2, 1, comb); //res->uesd
+            for (std::vector<int8_t> &j : comb) {
+                res.set_single(j[0]);
+                res.set_single(j[1]);
+                next_moves.emplace_back(i, Bomb_single, res);
 
-                for (std::vector<int8_t> &j : comb) {
-                    res.set_single(j[0]);
-                    res.set_single(j[1]);
+                //reset
+                res.set_single(j[0], false);
+                res.set_single(j[1], false);
+            }
+
+            //bomb + one pair
+            for (int8_t k = 0; k < 13; ++k) {
+                if (hand.is_pair(k) && k != i) {
+                    res.set_pair(k);
                     next_moves.emplace_back(i, Bomb_single, res);
 
                     //reset
-                    res.set_single(j[0], false);
-                    res.set_single(j[1], false);
-                }
-
-                //bomb + one pair
-                for (int8_t k = 0; k < 13; ++k) {
-                    if (hand.is_pair(k) && k != i) {
-                        res.set_pair(k);
-                        next_moves.emplace_back(i, Bomb_single, res);
-
-                        //reset
-                        res.set_pair(k, false);
-                    }
+                    res.set_pair(k, false);
                 }
             }
         }
-
-    } else {
-        ////not move
     }
 }
 
 void DouDiZhuHand::get_bomb_pair(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    if (last.type == Pass || last.type == Bomb_pair) {
-        for (int8_t i = 0; i < 13; ++i) {
-            if (hand.is_bomb(i) && i > last.power) {
-                CardSet res;
-                res.set_bomb(i);
+    for (int8_t i = 0; i < 13; ++i) {
+        if (hand.is_bomb(i) && i > last.power) {
+            CardSet res;
+            res.set_bomb(i);
 
-                std::vector<std::vector<int8_t> > comb;
-                combination(hand, res, 2, 2, comb); //res->used
+            std::vector<std::vector<int8_t> > comb;
+            combination(hand, res, 2, 2, comb); //res->used
 
-                for (std::vector<int8_t> &j : comb) {
-                    res.set_pair(j[0]);
-                    res.set_pair(j[1]);
+            for (std::vector<int8_t> &j : comb) {
+                res.set_pair(j[0]);
+                res.set_pair(j[1]);
 
-                    next_moves.emplace_back(i, Bomb_pair, res);
+                next_moves.emplace_back(i, Bomb_pair, res);
 
-                    //res reset
-                    res.set_pair(j[0], false);
-                    res.set_pair(j[1], false);
-                }
-
+                //res reset
+                res.set_pair(j[0], false);
+                res.set_pair(j[1], false);
             }
-        }
 
-    } else {
-        ////not move
+        }
     }
 }
 
@@ -487,7 +521,7 @@ void DouDiZhuHand::get_plane_pair(const CardSet &hand, const Pattern &last, std:
                 }
 
                 std::vector<std::vector<int8_t> > comb;
-                combination(hand, used, comb_len, 1, comb);
+                combination(hand, used, comb_len, 2, comb);
 
                 for (std::vector<int8_t> &j : comb) {
                     CardSet res;
@@ -496,7 +530,6 @@ void DouDiZhuHand::get_plane_pair(const CardSet &hand, const Pattern &last, std:
                     next_moves.emplace_back(power, Plane_single, res);
                 }
             }
-
         }
 
     } else {
@@ -512,5 +545,4 @@ void DouDiZhuHand::get_rocket(const CardSet &hand, std::vector<Pattern> &next_mo
         next_moves.emplace_back(99, Rocket, res);
     }
 }
-
 }  //namespace doudizhu_endgame
