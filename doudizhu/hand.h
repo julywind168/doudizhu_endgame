@@ -5,27 +5,26 @@
 #ifndef DOUDIZHU_ENDGAME_HAND_H
 #define DOUDIZHU_ENDGAME_HAND_H
 
-#include <unordered_map>
 #include "cardset.h"
 
 namespace doudizhu_endgame {
 
 enum Type {
-    Pass,               //不出
-    Single,             //单牌
-    Pair,               //对子
-    Triple,             //三个不带
-    Bomb,               //炸弹
-    Triple_single,      //三带一
-    Triple_pair,        //三带二
-    Bomb_single,        //四带两个单
-    Bomb_pair,          //四带两对
-    Straight_single,    //顺子
-    Straight_pair,      //连对
-    Plane,              //飞机（不带）
-    Plane_single,       //飞机带单牌
-    Plane_pair,         //飞机带对子
-    Rocket              //王炸（火箭）
+    Pass,               //pass
+    Single,             //3,4,5...
+    Pair,               //33 44 55..
+    Triple,             //333
+    Bomb,               //3333
+    Triple_single,      //3334
+    Triple_pair,        //33345
+    Bomb_single,        //333345
+    Bomb_pair,          //33334455
+    Straight_single,    //34567
+    Straight_pair,      //334455
+    Plane,              //333444
+    Plane_single,       //33344456
+    Plane_pair,         //3334445566
+    Rocket              //black joker red joker
 };
 
 struct Pattern {

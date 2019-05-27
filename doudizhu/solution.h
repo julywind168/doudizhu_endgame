@@ -20,7 +20,7 @@ public:
 private:
     Negamax engine_;
 
-    void search_remaining_move(const CardSet &lord, const CardSet &farmer, const Pattern &move);
+    void search_remaining_move(const CardSet &lord, const CardSet &farmer);
 
     std::string input_stdin(const char *prompt);
 

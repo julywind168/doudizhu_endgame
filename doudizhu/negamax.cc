@@ -42,7 +42,6 @@ int8_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pa
             int8_t val = -negamax_dev(after_play, farmer, move, FARMER_PLAY);
             if (val > 0) {
                 score = val;
-                best_move = move;
                 break;
             }
         }
@@ -52,17 +51,20 @@ int8_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pa
     return score;
 }
 
-bool Negamax::search(const CardSet &lord, const CardSet &farmer)
-{
-    Pattern start = {-1, Pass, CardSet()};
-    int8_t res = negamax_dev(lord, farmer, start, LORD_PLAY);
-    return res == 1;
-}
-
 bool Negamax::search(const CardSet &lord, const CardSet &farmer, const Pattern &last)
 {
-    int8_t res = negamax_dev(lord, farmer, last, LORD_PLAY);
-    return res == 1;
+    std::vector<Pattern> selections;
+    DouDiZhuHand::next_hand(lord, last, selections);
+    for (Pattern &move : selections) {
+        CardSet after_play;
+        DouDiZhuHand::play(lord, move.hand, after_play);
+        int8_t val = -negamax_dev(after_play, farmer, move, FARMER_PLAY);
+        if (val > 0) {
+            best_move = move;
+            return true;
+        }
+    }
+    return false;
 }
 
 size_t Negamax::nodes_searched()
@@ -80,11 +82,6 @@ void Negamax::reset_counter()
     nodes_searched_ = 0;
     hash_hit_ = 0;
     best_move = Pattern();
-}
-
-void Negamax::reset_transposition_table()
-{
-    transposition_table_.reset();
 }
 
 TranspositionTable::TranspositionTable()

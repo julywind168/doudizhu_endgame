@@ -22,15 +22,6 @@ public:                                                                         
   static constexpr auto value = decltype(Check<T>(0))::value;                                           \
 }
 
-template<bool C, typename T = void>
-struct enable_if {
-    typedef T type;
-};
-
-template<typename T>
-struct enable_if<false, T> {
-};
-
 static const std::map<int, int8_t> card2val =
 {
         {'3',  0},
@@ -55,7 +46,7 @@ static const std::map<int, int8_t> card2val =
 static const std::string val2card[16] =
 {
         "3 ", "4 ", "5 ", "6 ", "7 ", "8 ", "9 ", "10 ",
-        "J ", "Q ", "K ", "A ", "2 ", "小王 ", "大王 ", " "
+        "J ", "Q ", "K ", "A ", "2 ", "'Little Joker' ", "'Big Joker' ", " "
 };
 
 static const uint64_t MultiplyDeBruijnBitPosition[64] =

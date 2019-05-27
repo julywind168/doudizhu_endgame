@@ -53,8 +53,6 @@ public:
 
     Pattern best_move{};
 
-    bool search(const CardSet &lord, const CardSet &farmer);
-
     bool search(const CardSet &lord, const CardSet &farmer, const Pattern &last);
 
     size_t nodes_searched();
@@ -62,8 +60,6 @@ public:
     double hash_hit_rate();
 
     void reset_counter();
-
-    void reset_transposition_table();
 
 private:
     TranspositionTable transposition_table_;

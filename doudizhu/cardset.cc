@@ -137,7 +137,6 @@ std::string CardSet::str()
     while (pos < 64) {
         size_t index = (pos >> 2);
         if (index < 16) {
-            //牌面大在前
             string.insert(0, val2card[index]);
 
         } else {

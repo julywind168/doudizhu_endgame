@@ -8,7 +8,7 @@ from enum import Enum
 
 card2val = {'3': 0, '4': 1, '5': 2, '6': 3, '7': 4, '8': 5, '9': 6, '0': 7, 'J': 8, 'Q': 9, 'K': 10, 'A': 11, '2': 12,
             'Y': 13, 'Z': 14}
-val2card = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'Black Joker', 'Red Joker']
+val2card = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'Little Joker', 'Big Joker']
 
 
 class TranspositionTable(object):
@@ -289,7 +289,7 @@ def val2srt(hand):
 
 def get_farmer_play(farmer_dict, last):
     while 1:
-        move = val_from_cli('input farmer play:')
+        move = val_from_cli('enter farmer play:')
         next_ = get_next_move(farmer_dict, last)
         for i in next_:
             move_ = i['cards'].copy()

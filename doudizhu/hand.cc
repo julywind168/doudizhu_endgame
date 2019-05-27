@@ -306,7 +306,7 @@ void DouDiZhuHand::create_straight(const CardSet &hand, int8_t min_len, int8_t s
                                    std::vector<std::vector<int8_t >> &straights)
 {
     straights.clear();
-    /* 2 小王 大王 不考虑 */
+    //3 ~ A
     int8_t count = 0;
     int8_t set[12]{};
     for (int8_t i = 0; i < 12; ++i) {

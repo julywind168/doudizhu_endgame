@@ -154,25 +154,25 @@ private:
     std::bitset<BITSET_SIZE> card_mask_{};
 
     template<typename T>
-    typename enable_if<has_member__Find_first<T>::value, size_t>::type find_first_helper() const
+    typename std::enable_if<has_member__Find_first<T>::value, size_t>::type find_first_helper() const
     {
         return card_mask_._Find_first();
     }
 
     template<typename T>
-    typename enable_if<!has_member__Find_first<T>::value, size_t>::type find_first_helper() const
+    typename std::enable_if<!has_member__Find_first<T>::value, size_t>::type find_first_helper() const
     {
         return my_find_first(card_mask_.to_ullong(), BITSET_SIZE);
     }
 
     template<typename T>
-    typename enable_if<has_member__Find_next<T, size_t>::value, size_t>::type find_next_helper(size_t prev) const
+    typename std::enable_if<has_member__Find_next<T, size_t>::value, size_t>::type find_next_helper(size_t prev) const
     {
         return card_mask_._Find_next(prev);
     }
 
     template<typename T>
-    typename enable_if<!has_member__Find_next<T, size_t>::value, size_t>::type find_next_helper(size_t prev) const
+    typename std::enable_if<!has_member__Find_next<T, size_t>::value, size_t>::type find_next_helper(size_t prev) const
     {
         return my_find_next(prev, card_mask_.to_ullong(), BITSET_SIZE);
     }
