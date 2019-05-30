@@ -1,31 +1,28 @@
 # coding=utf-8
 
-
 import time
 from functools import wraps
 from itertools import combinations
 from enum import Enum
 
+# Transposition Table
+from ctypes import Structure, Array, c_int32, c_uint32
+
+# for multiprocessing
+from multiprocessing import Process, Queue, cpu_count, freeze_support
+
 card2val = {'3': 0, '4': 1, '5': 2, '6': 3, '7': 4, '8': 5, '9': 6, '0': 7, 'J': 8, 'Q': 9, 'K': 10, 'A': 11, '2': 12,
             'Y': 13, 'Z': 14}
-val2card = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'Little Joker', 'Big Joker']
+val2card = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'Black Joker', 'Red Joker']
 
 
-class TranspositionTable(object):
-    def __init__(self):
-        self.__size = 1024 * 1024
-        self.__size_mask = self.__size - 1
-        self.__container = [[None, None]] * self.__size
+class HashItem(Structure):
+    _fields_ = [('key', c_uint32), ('score', c_int32)]
 
-    def get(self, key):
-        index = key & self.__size_mask
-        if self.__container[index][0] == key:
-            return self.__container[index][1]
-        return 0
 
-    def add(self, key, score):
-        index = key & self.__size_mask
-        self.__container[index] = [key, score]
+class HashTable(Array):
+    _length_ = 1024 * 1024
+    _type_ = HashItem
 
 
 class Pattern(Enum):
@@ -49,7 +46,20 @@ class Pattern(Enum):
 FARMER_PLAY = 1
 LORD_PLAY = 0
 TRIPLE = True
-transposition_table = TranspositionTable()
+TABLE_SIZE_MASK = 1048575  # 1024 * 1024 -1
+
+
+def transposition_table_get(table, key):
+    index = key & TABLE_SIZE_MASK
+    if table[index].key == key:
+        return table[index].score
+    return 0
+
+
+def transposition_table_add(table, key, score):
+    index = key & TABLE_SIZE_MASK
+    table[index].key = key
+    table[index].score = score
 
 
 def func_time(func):
@@ -212,14 +222,12 @@ def play(hand, move):
     return re_
 
 
-def negama(lord, farmer, last, turn):
-    # global cal_node
-    # cal_node += 1
+def negama(tt, lord, farmer, last, turn):
     if not lord or not farmer:
         return -1
 
-    key = hash(str(lord) + str(farmer) + str(last['cards']) + str(turn))
-    s = transposition_table.get(key)
+    key = c_uint32(hash(str(lord) + str(farmer) + str(last['cards']) + str(turn))).value
+    s = transposition_table_get(tt, key)
     if s is not 0:
         return s
 
@@ -228,7 +236,7 @@ def negama(lord, farmer, last, turn):
         next_move = get_next_move(farmer, last)
         for move in next_move:
             after = play(farmer, move['cards'])
-            val = -negama(lord, after, move, LORD_PLAY)
+            val = -negama(tt, lord, after, move, LORD_PLAY)
             if val > 0:
                 score = val
                 break
@@ -236,20 +244,53 @@ def negama(lord, farmer, last, turn):
         next_move = get_next_move(lord, last)
         for move in next_move:
             after = play(lord, move['cards'])
-            val = -negama(after, farmer, move, FARMER_PLAY)
+            val = -negama(tt, after, farmer, move, FARMER_PLAY)
             if val > 0:
                 score = val
                 break
-    transposition_table.add(key, score)
+    transposition_table_add(tt, key, score)
     return score
+
+
+def worker(input, output):
+    tt = HashTable()
+    for args in iter(input.get, 'STOP'):
+        score = -negama(tt, *args)
+        output.put((score, args[2]))
+
+
+# @func_time
+def search_multi(lord, farmer, last):
+    PROCESSES = cpu_count() // 2
+    task_queue = Queue()
+    done_queue = Queue()
+    lord_move = get_next_move(lord, last)
+    after = (play(lord, move['cards']) for move in lord_move)
+    task = [(lord_, farmer, move, FARMER_PLAY) for lord_, move in zip(after, lord_move)]
+    for i in task:
+        task_queue.put(i)
+    for i in range(PROCESSES):
+        task_queue.put('STOP')
+
+    # start worker processes
+    for i in range(PROCESSES):
+        Process(target=worker, args=(task_queue, done_queue)).start()
+
+    for i in range(len(task)):
+        score, move = done_queue.get()
+        if score > 0:
+            return True, move
+
+    return False, {}
 
 
 # @func_time
 def search(lord, farmer, last):
+    tt = HashTable()
     lord_move = get_next_move(lord, last)
     for move in lord_move:
         after = play(lord, move['cards'])
-        val = -negama(after, farmer, move, FARMER_PLAY)
+        val = -negama(tt, after, farmer, move, FARMER_PLAY)
         if val > 0:
             return True, move
 
@@ -289,7 +330,7 @@ def val2srt(hand):
 
 def get_farmer_play(farmer_dict, last):
     while 1:
-        move = val_from_cli('enter farmer play:')
+        move = val_from_cli('input farmer play:')
         next_ = get_next_move(farmer_dict, last)
         for i in next_:
             move_ = i['cards'].copy()
@@ -323,7 +364,7 @@ def run():
     check_pattern(lord_dict, farmer_dict)
     start = {'cards': [], 'type': Pattern.PASS, 'power': -1}
     time_start = time.time()
-    win, best_move = search(lord_dict, farmer_dict, start)
+    win, best_move = search_multi(lord_dict, farmer_dict, start)
     time_end = time.time()
     print('----------------------------------------')
     print('lord:   ' + val2srt(lord_))
@@ -334,9 +375,9 @@ def run():
         print('play ' + val2srt(best_move['cards']))
         lord_current = play(lord_dict, best_move['cards'])
         farmer_current = farmer_dict.copy()
-
         print('current lord:   ' + val2srt(lord_current))
         print('current farmer: ' + val2srt(farmer_current))
+
         while lord_current:
             farmer_move = get_farmer_play(farmer_current, best_move)
             farmer_current = play(farmer_current, farmer_move['cards'])
@@ -355,4 +396,5 @@ def run():
 
 
 if __name__ == '__main__':
+    # freeze_support()
     run()
