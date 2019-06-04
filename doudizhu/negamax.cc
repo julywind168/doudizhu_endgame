@@ -1,32 +1,38 @@
 //
 // Created by deng on 18-11-28.
 //
+#include <thread>
+#include <functional>
+#include <algorithm>
 #include "negamax.h"
+#include "utils.h"
 
 namespace doudizhu_endgame {
 
-int8_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int8_t turn)
+int32_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int32_t turn)
 {
-    nodes_searched_ += 1;
+    if (finish_) {
+        return 0;
+    }
+
     if (lord.empty() || farmer.empty()) {
         return -1;
     }
 
-    uint32_t key = transposition_table_.gen_key(lord, farmer, last_move.hand, turn);
-    int8_t search = transposition_table_.get(key);
+    uint32_t key = TranspositionTable::gen_key(lord, farmer, last_move.hand, turn);
+    int32_t search = transposition_table_.get(key);
     if (search != 0) {
-        hash_hit_ += 1;
         return search;
     }
 
-    int8_t score = -1;
+    int32_t score = -1;
     if (turn == FARMER_PLAY) {//farmer
         std::vector<Pattern> selections;
         DouDiZhuHand::next_hand(farmer, last_move, selections);
         for (Pattern &move : selections) {
             CardSet after_play;
             DouDiZhuHand::play(farmer, move.hand, after_play);
-            int8_t val = -negamax_dev(lord, after_play, move, LORD_PLAY);
+            int32_t val = -negamax_dev(lord, after_play, move, LORD_PLAY);
             if (val > 0) {
                 score = val;
                 break;
@@ -39,7 +45,7 @@ int8_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pa
         for (Pattern &move : selections) {
             CardSet after_play;
             DouDiZhuHand::play(lord, move.hand, after_play);
-            int8_t val = -negamax_dev(after_play, farmer, move, FARMER_PLAY);
+            int32_t val = -negamax_dev(after_play, farmer, move, FARMER_PLAY);
             if (val > 0) {
                 score = val;
                 break;
@@ -51,37 +57,35 @@ int8_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pa
     return score;
 }
 
-bool Negamax::search(const CardSet &lord, const CardSet &farmer, const Pattern &last)
+void Negamax::woker(CardSet lord, CardSet farmer, Pattern last_move, ThreadSafe_Queue<Pattern> &done_queue)
+{
+    int32_t val = -negamax_dev(lord, farmer, last_move, FARMER_PLAY);
+    if (val > 0) {
+        finish_.store(true);
+        done_queue.push(last_move);
+    }
+}
+
+bool Negamax::search_multithreading(const CardSet &lord, const CardSet &farmer, const Pattern &last)
 {
     std::vector<Pattern> selections;
     DouDiZhuHand::next_hand(lord, last, selections);
+    std::vector<std::thread> threads;
+    ThreadSafe_Queue<Pattern> done_queue;
     for (Pattern &move : selections) {
         CardSet after_play;
         DouDiZhuHand::play(lord, move.hand, after_play);
-        int8_t val = -negamax_dev(after_play, farmer, move, FARMER_PLAY);
-        if (val > 0) {
-            best_move = move;
-            return true;
-        }
+        threads.emplace_back(std::thread(&Negamax::woker, this, after_play, farmer, move, std::ref(done_queue)));
     }
-    return false;
+    std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
+
+    return done_queue.try_pop(best_move);
 }
 
-size_t Negamax::nodes_searched()
+void Negamax::reset_result()
 {
-    return nodes_searched_;
-}
-
-double Negamax::hash_hit_rate()
-{
-    return ((double) hash_hit_ / nodes_searched_) * 100;
-}
-
-void Negamax::reset_counter()
-{
-    nodes_searched_ = 0;
-    hash_hit_ = 0;
     best_move = Pattern();
+    transposition_table_.reset();
 }
 
 TranspositionTable::TranspositionTable()
@@ -99,25 +103,27 @@ void TranspositionTable::reset()
     memset(table_, 0, sizeof(struct HashItem) * TRANSPOSITION_TABLE_SIZE);
 }
 
-void TranspositionTable::add(uint32_t key, int8_t score)
+void TranspositionTable::add(uint32_t key, int32_t score)
 {
     size_t index = key & TRANSPOSITION_TABLE_SIZE_MASK;
-    table_[index].key = key;
+    table_[index].key = key ^ unsigned(score);
     table_[index].score = score;
 }
 
-int8_t TranspositionTable::get(uint32_t key)
+int32_t TranspositionTable::get(uint32_t key)
 {
     size_t index = key & TRANSPOSITION_TABLE_SIZE_MASK;
-    if (table_[index].key == key) {
-        return table_[index].score;
+    auto key_ = table_[index].key;
+    auto score = table_[index].score;
+    if ((key_ ^ unsigned(score)) == key) {
+        return score;
 
     } else {
         return 0;
     }
 }
 
-uint32_t TranspositionTable::gen_key(const CardSet &lord, const CardSet &farmer, const CardSet &last_move, int8_t turn)
+uint32_t TranspositionTable::gen_key(const CardSet &lord, const CardSet &farmer, const CardSet &last_move, int32_t turn)
 {
     uint64_t key = 0;
 

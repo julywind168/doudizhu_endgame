@@ -8,13 +8,14 @@
 #include <vector>
 #include <cstdint>
 #include <cstring>
+#include <atomic>
 
 #include "cardset.h"
 #include "hand.h"
 
 namespace doudizhu_endgame {
 
-#define TRANSPOSITION_TABLE_SIZE (1024*1024*2)
+#define TRANSPOSITION_TABLE_SIZE (1024 * 1024 * 2)
 #define TRANSPOSITION_TABLE_SIZE_MASK ((TRANSPOSITION_TABLE_SIZE) - 1)
 #define FARMER_PLAY 1
 #define LORD_PLAY   0
@@ -23,21 +24,17 @@ class TranspositionTable {
 public:
 
     TranspositionTable();
-
     ~TranspositionTable();
 
     struct HashItem {
         uint32_t key{};
-        int8_t score{};
+        int32_t  score{};
     };
 
     void reset();
-
-    void add(uint32_t key, int8_t score);
-
-    int8_t get(uint32_t key);
-
-    uint32_t gen_key(const CardSet &lord, const CardSet &farmer, const CardSet &last_move, int8_t turn);
+    void add(uint32_t key, int32_t score);
+    int32_t get(uint32_t key);
+    static uint32_t gen_key(const CardSet &lord, const CardSet &farmer, const CardSet &last_move, int32_t turn);
 
 private:
 
@@ -48,25 +45,19 @@ class Negamax {
 public:
 
     Negamax() = default;
-
     ~Negamax() = default;
 
     Pattern best_move{};
 
-    bool search(const CardSet &lord, const CardSet &farmer, const Pattern &last);
-
-    size_t nodes_searched();
-
-    double hash_hit_rate();
-
-    void reset_counter();
+    bool search_multithreading(const CardSet &lord, const CardSet &farmer, const Pattern &last);
+    void reset_result();
 
 private:
     TranspositionTable transposition_table_;
-    size_t nodes_searched_{};
-    size_t hash_hit_{};
+    std::atomic<bool> finish_{false};
 
-    int8_t negamax_dev(const CardSet &loard, const CardSet &farmer, const Pattern &last_move, int8_t turn);
+    void woker(CardSet lord, CardSet farmer, Pattern last_move, ThreadSafe_Queue<Pattern> &done_queue);
+    int32_t negamax_dev(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int32_t turn);
 };
 } //namespace doudizhu_endgame
 

@@ -13,3 +13,5 @@ SET(CMAKE_BUILD_TYPE "Release")
 aux_source_directory(. all_source_file)
 
 add_executable(doudizhu_endgame ${all_source_file})
+
+target_link_libraries(doudizhu_endgame pthread)

@@ -30,13 +30,11 @@ void Solution::start()
 
     using namespace std::chrono;
     steady_clock::time_point start = steady_clock::now();
-    bool win = engine_.search(lord, farmer, start_pattern);
+    bool win = engine_.search_multithreading(lord, farmer, start_pattern);
     steady_clock::time_point end = steady_clock::now();
 
     duration<double> time_span = duration_cast<duration<double>>(end - start);
-    std::cout << "nodes calculated: " << engine_.nodes_searched() << "\n";
-    std::cout << "search time: " << time_span.count() << " seconds.\n";
-    std::cout << "transposition table hit rate: " << engine_.hash_hit_rate() << "%\n";
+    std::cout << "search_multithreading time: " << time_span.count() << " seconds.\n";
     std::cout << "------------------------------------------------" << "\n";
 
     if (win) {
@@ -67,8 +65,8 @@ void Solution::search_remaining_move(const CardSet &lord, const CardSet &farmer)
     lord_current.remove(engine_.best_move.hand);
     while (!lord_current.empty()) {
         Pattern farmer_move = get_enemy_current_hand(farmer_current, engine_.best_move);
-        engine_.reset_counter();
-        engine_.search(lord_current, farmer_current, farmer_move);
+        engine_.reset_result();
+        engine_.search_multithreading(lord_current, farmer_current, farmer_move);
         lord_current.remove(engine_.best_move.hand);
 
         std::cout << "------------------------------------------------" << "\n";
