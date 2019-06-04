@@ -56,8 +56,8 @@ private:
     TranspositionTable transposition_table_;
     std::atomic<bool> finish_{false};
 
-    void woker(CardSet lord, CardSet farmer, Pattern last_move, ThreadSafe_Queue<Pattern> &done_queue);
-    int32_t negamax_dev(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int32_t turn);
+    void worker(CardSet lord, CardSet farmer, Pattern last_move, ThreadSafe_Queue<Pattern> &done_queue);
+    int32_t negamax(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int32_t turn);
 };
 } //namespace doudizhu_endgame
 

@@ -9,7 +9,7 @@
 
 namespace doudizhu_endgame {
 
-int32_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int32_t turn)
+int32_t Negamax::negamax(const CardSet &lord, const CardSet &farmer, const Pattern &last_move, int32_t turn)
 {
     if (finish_) {
         return 0;
@@ -32,7 +32,7 @@ int32_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const P
         for (Pattern &move : selections) {
             CardSet after_play;
             DouDiZhuHand::play(farmer, move.hand, after_play);
-            int32_t val = -negamax_dev(lord, after_play, move, LORD_PLAY);
+            int32_t val = -negamax(lord, after_play, move, LORD_PLAY);
             if (val > 0) {
                 score = val;
                 break;
@@ -45,7 +45,7 @@ int32_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const P
         for (Pattern &move : selections) {
             CardSet after_play;
             DouDiZhuHand::play(lord, move.hand, after_play);
-            int32_t val = -negamax_dev(after_play, farmer, move, FARMER_PLAY);
+            int32_t val = -negamax(after_play, farmer, move, FARMER_PLAY);
             if (val > 0) {
                 score = val;
                 break;
@@ -57,9 +57,9 @@ int32_t Negamax::negamax_dev(const CardSet &lord, const CardSet &farmer, const P
     return score;
 }
 
-void Negamax::woker(CardSet lord, CardSet farmer, Pattern last_move, ThreadSafe_Queue<Pattern> &done_queue)
+void Negamax::worker(CardSet lord, CardSet farmer, Pattern last_move, ThreadSafe_Queue<Pattern> &done_queue)
 {
-    int32_t val = -negamax_dev(lord, farmer, last_move, FARMER_PLAY);
+    int32_t val = -negamax(lord, farmer, last_move, FARMER_PLAY);
     if (val > 0) {
         finish_.store(true);
         done_queue.push(last_move);
@@ -75,7 +75,7 @@ bool Negamax::search_multithreading(const CardSet &lord, const CardSet &farmer, 
     for (Pattern &move : selections) {
         CardSet after_play;
         DouDiZhuHand::play(lord, move.hand, after_play);
-        threads.emplace_back(std::thread(&Negamax::woker, this, after_play, farmer, move, std::ref(done_queue)));
+        threads.emplace_back(std::thread(&Negamax::worker, this, after_play, farmer, move, std::ref(done_queue)));
     }
     std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
 
@@ -84,8 +84,8 @@ bool Negamax::search_multithreading(const CardSet &lord, const CardSet &farmer, 
 
 void Negamax::reset_result()
 {
+    finish_.store(false);
     best_move = Pattern();
-    transposition_table_.reset();
 }
 
 TranspositionTable::TranspositionTable()
