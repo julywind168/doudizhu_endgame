@@ -17,7 +17,9 @@ namespace doudizhu_endgame {
 
 #define TRANSPOSITION_TABLE_SIZE (1024 * 1024 * 2)
 #define TRANSPOSITION_TABLE_SIZE_MASK ((TRANSPOSITION_TABLE_SIZE) - 1)
-#define FARMER_PLAY 1
+
+//'127' should be better then '1'
+#define FARMER_PLAY 127
 #define LORD_PLAY   0
 
 class TranspositionTable {
@@ -50,6 +52,7 @@ public:
     Pattern best_move{};
 
     bool search_multithreading(const CardSet &lord, const CardSet &farmer, const Pattern &last);
+    bool search(const CardSet &lord, const CardSet &farmer, const Pattern &last);
     void reset_result();
 
 private:

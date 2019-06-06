@@ -82,6 +82,22 @@ bool Negamax::search_multithreading(const CardSet &lord, const CardSet &farmer, 
     return done_queue.try_pop(best_move);
 }
 
+bool Negamax::search(const CardSet &lord, const CardSet &farmer, const Pattern &last)
+{
+    std::vector<Pattern> selections;
+    DouDiZhuHand::next_hand(lord, last, selections);
+    for (Pattern &move : selections) {
+        CardSet after_play;
+        DouDiZhuHand::play(lord, move.hand, after_play);
+        int32_t val = -negamax(after_play, farmer, move, FARMER_PLAY);
+        if (val > 0) {
+            best_move = move;
+            return true;
+        }
+    }
+    return false;
+}
+
 void Negamax::reset_result()
 {
     finish_.store(false);

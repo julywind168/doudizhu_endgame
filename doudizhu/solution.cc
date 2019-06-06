@@ -66,7 +66,7 @@ void Solution::search_remaining_move(const CardSet &lord, const CardSet &farmer)
     while (!lord_current.empty()) {
         Pattern farmer_move = get_enemy_current_hand(farmer_current, engine_.best_move);
         engine_.reset_result();
-        engine_.search_multithreading(lord_current, farmer_current, farmer_move);
+        engine_.search(lord_current, farmer_current, farmer_move);
         lord_current.remove(engine_.best_move.hand);
 
         std::cout << "------------------------------------------------" << "\n";
