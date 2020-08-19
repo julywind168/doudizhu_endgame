@@ -200,10 +200,10 @@ void DouDiZhuHand::get_triple_pair(const CardSet &hand, const Pattern &last, std
 
 void DouDiZhuHand::get_bomb(const CardSet &hand, const Pattern &last, std::vector<Pattern> &next_moves)
 {
-    //powerx4 !!!!
     if (last.type != Rocket && hand.size() >= 4) {
         for (int8_t i = 0; i < 13; ++i) {
-            if (hand.is_bomb(i) && (i << 2) > last.power) {
+            if ((hand.is_bomb(i) && last.type == Bomb && i > last.power)
+               || (hand.is_bomb(i) && last.type != Bomb) ) {
                 CardSet res;
                 res.set_bomb(i);
                 next_moves.emplace_back((i << 2), Bomb, res);
