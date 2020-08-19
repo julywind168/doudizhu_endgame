@@ -76,7 +76,7 @@ def func_time(func):
 
 
 def create_straight(card_dict, min_len, size, last_power):
-    card_for_straight = [x for x in card_dict if card_dict[x] >= size and x > last_power]
+    card_for_straight = [x for x in card_dict if card_dict[x] >= size and x > last_power and x < 12]
     if len(card_for_straight) < min_len:
         return []
 
@@ -103,8 +103,10 @@ def get_next_move(card_dict, last):
 
     if TRIPLE and last_type != Pattern.ROCKET:
         for card in card_dict:
-            if card_dict[card] is 4 and (card << 2) > last_power:
-                append({'cards': [card] * 4, 'type': Pattern.BOMB, 'power': card << 2})
+            if last_type == Pattern.BOMB and card_dict[card] == 4 and card > last_power:
+                append({'cards': [card] * 4, 'type': Pattern.BOMB, 'power': card})
+            if last_type != Pattern.BOMB and card_dict[card] == 4:
+                append({'cards': [card] * 4, 'type': Pattern.BOMB, 'power': card})
 
     if last_type is Pattern.PASS or last_type is Pattern.PAIR:
         for card in card_dict:
